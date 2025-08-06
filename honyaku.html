@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ちゃってぃ翻訳くん</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    button {
+      font-size: 1.2em;
+      padding: 1em;
+      margin: 10px;
+    }
+    .output {
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <h1>ちゃってぃ翻訳くん</h1>
+
+  <button onclick="startRecognition('ja')">🎤 日本語で話す</button>
+  <button onclick="startRecognition('en')">🎤 英語で話す</button>
+
+  <div class="output">
+    <p><strong>認識結果:</strong> <span id="inputText">---</span></p>
+    <p><strong>翻訳結果:</strong> <span id="translatedText">---</span></p>
+  </div>
+
+  <script>
+    const inputTextElem = document.getElementById("inputText");
+    const translatedTextElem = document.getElementById("translatedText");
+
+    async function translateText(text, fromLang, toLang) {
+      const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${fromLang}&tl=${toLang}&dt=t&q=${encodeURIComponent(text)}`);
+      const data = await res.json();
+      return data[0][0][0];
+    }
+
+    function speakText(text, lang) {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = lang;
+      speechSynthesis.speak(utter);
+    }
+
+    function startRecognition(sourceLang) {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = sourceLang;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        inputTextElem.textContent = "聞き取り中...";
+        translatedTextElem.textContent = "---";
+      };
+
+      recognition.onerror = (e) => {
+        inputTextElem.textContent = "認識エラー";
+      };
+
+      recognition.onresult = async (event) => {
+        const spokenText = event.results[0][0].transcript;
+        inputTextElem.textContent = spokenText;
+
+        const targetLang = sourceLang === 'ja' ? 'en' : 'ja';
+
+        const translated = await translateText(spokenText, sourceLang, targetLang);
+        translatedTextElem.textContent = translated;
+
+        speakText(translated, targetLang);
+      };
+
+      recognition.start();
+    }
+  </script>
+</body>
+</html>
